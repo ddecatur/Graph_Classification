@@ -207,7 +207,7 @@ def match_series(col_to_seg_map,offset,leg_text_boxes,img_shape, algo='current')
     return rtn
 
 
-def run(img, algo='current'):
+def run(img, algo='current', use_text_not_color=True):
     
     #create new dir
     path = "./pipeline_batch"
@@ -224,6 +224,7 @@ def run(img, algo='current'):
     jpgimg = Image.open(img).convert('RGB')
     newimgp = img[:len(img)-3] + 'jpg' # convert png to jpg
     jpgimg.save(newimgp)
+    jpgimg.close()
     ocr = OCR(img,assign_labels(show_inference(detection_model, newimgp))) #{},4)#
     #print('legbox = ',ocr.leg_box)
     text_dict = ocr.crop()
@@ -242,7 +243,7 @@ def run(img, algo='current'):
     for i,(res,col) in enumerate(segImg):
         fname = "pipeline_batch/" + str(i) + ".png"
         plt.imsave(fname, res)
-        cat = predictCategory(fname, "models/correlation/graph_class_model_v3.h5", ['negative', 'neutral', 'positive']) #"models/correlation/graph_class_model_v3.h5"
+        cat = predictCategory(fname, "models/correlation/graph_class_model_v3.h5", ['negative', 'neutral', 'positive']) #"models/correlation/graph_class_model_v3.h5" #"models/correlation/graph_class_model_87_default_pstyle.h5"
         # variable = pytesseract.image_to_string(Image.open(fname))
         colstr = "["
         for chanel in col:
@@ -276,7 +277,7 @@ def run(img, algo='current'):
         if col not in col_to_cat_map:
             col_to_cat_map[col] = set()
         col_to_cat_map[col].add(cat)
-    if ocr.leg_box != None:
+    if (ocr.leg_box != None) and use_text_not_color:
         if algo == 'old':
             col_to_series_map, col_to_series_map2 = match_series(col_to_seg_map, ocr.crop_amount, ocr.leg_text_boxes, img_shape, algo=algo)
             for key in col_to_series_map:
@@ -288,6 +289,8 @@ def run(img, algo='current'):
             for key in col_to_series_map:
                 rtn[col_to_series_map[key]] = col_to_cat_map[key]
     else:
+        rtn = col_to_cat_map
+    if not rtn: # if rtn is somehow still empty set it to the color mapping
         rtn = col_to_cat_map
 
         # if col == 'g':
@@ -330,15 +333,15 @@ def run(img, algo='current'):
         return (rtn,text_dict,ocr)
 
 
-def process_img(img_path, algo='current'):
+def process_img(img_path, algo='current', use_text_not_color=True):
     if algo=='old':
-        result,result2,text_dict,OCR = run(img_path, algo=algo)
-        text_dict = OCR.crop()#{'x axis': OCR.xAxisLab, 'y axis': OCR.yAxisLab, 'title': OCR.title}
+        result,result2,text_dict,OCR = run(img_path, algo=algo) # possible the only colors no text version?
+        text_dict = {'x axis': OCR.xAxisLab, 'y axis': OCR.yAxisLab, 'title': OCR.title}#OCR.crop()#{'x axis': OCR.xAxisLab, 'y axis': OCR.yAxisLab, 'title': OCR.title}
         display_string = img_path
         for elem in text_dict:
             if elem != 'legend' and text_dict[elem] is not None:
                 #print(display_string, elem, text_dict[elem])
-                display_string = display_string + ", " + elem + ": " + ' '.join(text_dict[elem]) #use this if not OD --> text_dict[elem]
+                display_string = display_string + ", " + elem + ": " + text_dict[elem] #' '.join(text_dict[elem]) #use this if not OD --> text_dict[elem]
                 # for obj in text_dict[elem]:
                 #     display_string = display_string + " " + obj #removed space
         corr_set = set()
@@ -353,7 +356,7 @@ def process_img(img_path, algo='current'):
         
         return (display_string, corr_set, corr_set2)
     else:
-        result,text_dict,OCR = run(img_path, algo=algo) #OCR
+        result,text_dict,OCR = run(img_path, algo=algo, use_text_not_color=use_text_not_color) #OCR
         text_dict = OCR.crop()#{'x axis': OCR.xAxisLab, 'y axis': OCR.yAxisLab, 'title': OCR.title}
         display_string = img_path
         for elem in text_dict:
@@ -370,6 +373,6 @@ def process_img(img_path, algo='current'):
         
         return (display_string, corr_set)
 
-# strrrr, setttt = process_img('./exp9_ctrl/graph_0.png')
+# strrrr, setttt = process_img('./sample_train1/png/424.png', use_text_not_color=False)
 # print(strrrr)
 # print(setttt)

@@ -1,4 +1,4 @@
-from pipeline import dist
+from pipeline import dist, process_img
 from graph_classification import graph_classification
 import numpy as np
 import cv2
@@ -69,7 +69,7 @@ def create_filtered_dirs(dirname):
 
         # ----------------------------------------
 
-def resave_wild_graphs_for_classification(train_val, outputDir, traintest=None):
+def resave_wild_graphs_for_classification(train_val, outputDir, traintest=None, preprocess=True):
     posRGB = {(255,0,255):'purple', (255,0,0):'red', (0,128,0):'green', (0,0,255):'blue', (255,140,0):'orange'} #(0,255,255):'cyan', (255,255,0):'yellow', 
     with open('outside_data_labels.yaml') as f:
         gtLabels = yaml.load(f, Loader=yaml.FullLoader)
@@ -100,7 +100,7 @@ def resave_wild_graphs_for_classification(train_val, outputDir, traintest=None):
         for corrstr in gtCorr:
             col_corr = corrstr.split()
             correlation[col_corr[0][:-1]] = col_corr[1] # here the slicing on the 0th element is to get rid of the colon at the end of the string
-        segImg = segmentImg(imagePath)
+        segImg = segmentImg(imagePath, preprocess=preprocess)
         for i,(img,col) in enumerate(segImg):
             closeCol = find_nearest_col(col,posRGB)
             if closeCol in correlation:
@@ -206,13 +206,77 @@ def exp1(numGraphs):
 
 
 # Exp 2
-def exp2(numGraphs):
-    poss_sNs = [1,2,3]
-    for i in range(numGraphs):
-        sN = choice(poss_sNs)
-        print(sN)
-        name = create_multiData(i, sN, 'train', 'random', 'multi', 'multi', 'exp2')
-        cat = predictCategory(name, "models/correlation/graph_class_model.h5", ['negative', 'neutral', 'positive'])
+def exp2():
+    # create normally dir (already done in other exps)
+    posRGB = {(255,0,255):'purple', (255,0,0):'red', (0,128,0):'green', (0,0,255):'blue', (255,140,0):'orange'} #(0,255,255):'cyan', (255,255,0):'yellow', 
+    with open('outside_data_labels.yaml') as f:
+        gtLabels = yaml.load(f, Loader=yaml.FullLoader)
+    M = gtLabels.get('M')
+    #R = gtLabels.get('R')
+    
+    errorP = 0
+    errorNP = 0
+
+    # --- M graphs ---
+    fileList = glob.glob("exp_testing/M/M*")
+    n = len(fileList)
+
+    ctr = 0
+    for imagePath in fileList:
+        colors = {}
+        ctr += 1
+        s = imagePath.find('/M/M') + 3
+        e = imagePath.find('.', s)
+        name = imagePath[s:e]
+        print(name)
+        if name in M:
+            gtCorr = set(M[name].keys())
+        else:
+            print("key issue in M dict")
+            gtCorr = set()
+        for corrstr in gtCorr:
+            col_corr = corrstr.split()
+            key = col_corr[0][:-1]
+            if key not in colors:
+                colors[key] = 0
+            colors[key] += 1
+        colorsNP = colors.copy()
+        # control
+        segImg = segmentImg(imagePath, preprocess=True)
+        for i,(img,col) in enumerate(segImg):
+            closeCol = find_nearest_col(col,posRGB)
+            
+            if closeCol in colors:
+                colors[closeCol] -= 1
+            else:
+                colors[closeCol] = 1
+
+        
+        for col in colors:
+            errorP += colors[col]
+
+
+        # intervention [remeber to switch the k-means back to CNN if test this part again]
+        segImg = segmentImg(imagePath, preprocess=False)
+        for i,(img,col) in enumerate(segImg):
+            closeCol = find_nearest_col(col,posRGB)
+            
+            if closeCol in colorsNP:
+                colorsNP[closeCol] -= 1
+            else:
+                colorsNP[closeCol] = 1
+        
+        for col in colorsNP:
+            errorNP += colorsNP[col]
+
+    scoreP = (n-errorP)/n
+    scoreNP = (n-errorNP)/n
+    print(errorP,errorNP)
+    print(scoreP,scoreNP)
+
+    return (scoreP, scoreNP)
+
+#print(exp2())
 
 # Exp 3
 def exp3(numGraphs, wild=False):
@@ -295,7 +359,7 @@ def exp7(numGraphs):
 
     ### INTERVENTION ###
     # create encessary dirs
-    outputDir = "exp7_filtered_test"
+    outputDir = "exp7_filtered_test_v2"
     create_filtered_dirs(outputDir)
     # generated graphs
     poss_sNs = [1,2,3]
@@ -304,7 +368,7 @@ def exp7(numGraphs):
         print(sN)
         create_multiData(i, sN, 'train', 'random', 'multi', 'multi', 'g', outputDir=outputDir)
     # wild graphs
-    resave_wild_graphs_for_classification("validation", outputDir)
+    #resave_wild_graphs_for_classification("validation", outputDir)
     # Classifier
     graph_classification(cwd,0,outputDir)
 
@@ -318,7 +382,7 @@ def exp8(numGraphs):
     # Control
     # create necessary dirs
     #clean(os.getcwd())
-    outputDir = "exp8_filtered_ctrl"
+    outputDir = "exp8_filtered_ctrl_v3"
     create_filtered_dirs(outputDir)
     poss_sNs = [1,2,3]
     for i in range(numGraphs):
@@ -335,7 +399,7 @@ def exp8(numGraphs):
     # intervention
     # create necessary dirs
     #clean(os.getcwd())
-    outputDir = "exp8_filtered_test"
+    outputDir = "exp8_filtered_test_v3"
     create_filtered_dirs(outputDir)
     for i in range(numGraphs):
         sN = choice(poss_sNs)
@@ -437,3 +501,101 @@ def exp9(numGraphs):
     #     print(name)
 
 #exp9(100)
+
+def exp10(numGraphs):
+    ground_truth = []
+    ground_truth.append(("filename","x axis label","y axis label","title string","legend and correlation"))
+    
+    posSNs = [1,2,3]
+    axis_hits = 0
+    series_hits = 0
+    axis_hits_i = 0
+    series_hits_i = 0
+    hits = 0
+    hits_i = 0
+    for i in range(0,numGraphs):
+        leg_display_str = ""
+        name,x1s,x2s,tstr,label_to_corr_map = create_multiData(i, choice(posSNs), "train", "random", "multi", "solid", 'pt')
+        iname = name + ".png"
+        display_string = "images/" + iname + ", x axis: " + x1s + ", y axis: " + x2s + ", title: " + tstr
+        leg_set = set()
+        for key in label_to_corr_map:
+            leg_set.add(key + ": " + label_to_corr_map[key])
+            leg_display_str = leg_display_str + ", " + key + ": " + label_to_corr_map[key]
+        ground_truth.append((iname, x1s, x2s, tstr, leg_display_str))
+        #display_string = display_string + leg_display_str
+        #test_string,test_leg_set = process_img("images/" + iname)
+        test_string,test_leg_set,test_leg_set_i = process_img("images/" + iname, algo='old')
+        print(display_string)
+        print(leg_set)
+        print(test_string)
+        print(test_leg_set)
+        #print(test_string_i)
+        print(test_leg_set_i)
+        edds = editfast(display_string, test_string)
+        if edds < 6:
+            axis_hits = axis_hits + 1
+        else:
+            print('axis fail --------------------------------')
+        # edds_i = editfast(display_string, test_string_i)
+        # if edds_i < 6:
+        #     axis_hits_i = axis_hits_i + 1
+        # else:
+        #     print('axis fail i --------------------------------')
+        
+        # control
+        oldsh = series_hits
+        for elem1 in leg_set:
+            for elem2 in test_leg_set:
+                edsm = editfast(elem1,elem2)
+                #print('edsm =' + str(edsm))
+                if edsm < 3:
+                    series_hits = series_hits + (1/len(leg_set))
+                    break
+        if oldsh == series_hits:
+            print('series fail --------------------------------')
+        if not bool(test_leg_set):
+            print('empty set for legend')
+        
+        # intervetion
+        oldsh = series_hits_i
+        for elem1 in leg_set:
+            for elem2 in test_leg_set_i:
+                edsm = editfast(elem1,elem2)
+                #print('edsm =' + str(edsm))
+                if edsm < 3:
+                    series_hits_i = series_hits_i + (1/len(leg_set))
+                    break
+        if oldsh == series_hits_i:
+            print('series fail i --------------------------------')
+        if not bool(test_leg_set_i):
+            print('empty set for legend i')
+
+    # control
+    hits = (axis_hits + series_hits)/2
+    #print("axis score: " + str(axis_hits/numGraphs))
+    print("series score: " + str(series_hits/numGraphs))
+    score = (hits/numGraphs)*100
+    #print("total score: " + str(score) + "%")
+
+    # intervention
+    #hits_i = (axis_hits_i + series_hits_i)/2
+    #print("axis score: " + str(axis_hits_i/numGraphs))
+    print("series score: " + str(series_hits_i/numGraphs))
+    #score_i = (hits_i/numGraphs)*100
+    #print("total score i: " + str(score_i) + "%")
+
+    # write csv files
+    with open('./exp10.csv', 'w') as f:
+        writer = csv.writer(f, delimiter=',')
+        writer.writerows(ground_truth)
+    f.close()
+
+    # outputDir = "exp10"
+    # create_filtered_dirs(outputDir)
+    # poss_sNs = [1,2,3]
+    # for i in range(numGraphs):
+    #     sN = choice(poss_sNs)
+    #     print(sN)
+    #     create_multiData(i, sN, 'train', 'random', 'multi', 'multi', 'exp10', pstyle='multi', outputDir2=outputDir)
+#exp10(100)
