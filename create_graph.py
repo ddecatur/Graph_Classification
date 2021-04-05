@@ -133,6 +133,7 @@ def create_multiData(n, sN, train_val, seriesType, dcolor, dataStyle, model, pst
 
     # plot
     label_to_corr_map = {}
+    col_to_corr_map = {}
     correlation = {}
     fig, ax = plt.subplots()
     plot_options = plt.style.available
@@ -154,6 +155,7 @@ def create_multiData(n, sN, train_val, seriesType, dcolor, dataStyle, model, pst
             correlation[colArr[i]] = 'neutral'
         lbl = get_random_string(randint(3,12))
         label_to_corr_map[lbl] = correlation[colArr[i]]
+        #col_to_corr_map["colArr[i]"] = correlation[colArr[i]]
         if GT == 'line':
             if model == 'g':
                 plt.plot(X1, X2, linestyle=LSarr[i], label=lbl, color=colArr[i])     
@@ -173,6 +175,10 @@ def create_multiData(n, sN, train_val, seriesType, dcolor, dataStyle, model, pst
                 ax.bar((len(varArr)*X1)+(w*i), X2, width=w, align='center', label=lbl) # color=colArr[i], 
         else:
             raise ValueError('graph type not recognized')
+        
+        #get color:
+        #print(p[i].get_color())
+        #col_to_corr_map[p[i].get_color()] = correlation[colArr[i]]
 
     # randomize label and title positions and  strings
     ylabelpos = ['left', 'right']

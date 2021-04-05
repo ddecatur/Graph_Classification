@@ -17,6 +17,8 @@ from pipeline import *
 from seg_img import sat_thresh_filter
 from k_means_clustering import num_diff_cols
 import yaml
+from time import time
+from statistics import median, mean
 
 IMG_HEIGHT = 480
 IMG_WIDTH = 640
@@ -45,7 +47,7 @@ def editfast(s,t):
     return rtn
 
 
-def writeOutput(numGraphs):
+def writeOutput(numGraphs, pstyle="default", txtcolres=True):
     ground_truth = []
     ground_truth.append(("filename","x axis label","y axis label","title string","legend and correlation"))
     
@@ -53,9 +55,12 @@ def writeOutput(numGraphs):
     axis_hits = 0
     series_hits = 0
     hits = 0
+    ttimes = []
+    ctr = 0
     for i in range(0,numGraphs):
+        ctr+=1
         leg_display_str = ""
-        name,x1s,x2s,tstr,label_to_corr_map = create_multiData(i, choice(posSNs), "train", "random", "multi", "solid", 'pt')
+        name,x1s,x2s,tstr,label_to_corr_map = create_multiData(i, choice(posSNs), "train", "random", "multi", "solid", 'pt', pstyle=pstyle)
         iname = name + ".png"
         display_string = "images/" + iname + ", x axis: " + x1s + ", y axis: " + x2s + ", title: " + tstr
         leg_set = set()
@@ -64,7 +69,11 @@ def writeOutput(numGraphs):
             leg_display_str = leg_display_str + ", " + key + ": " + label_to_corr_map[key]
         ground_truth.append((iname, x1s, x2s, tstr, leg_display_str))
         #display_string = display_string + leg_display_str
-        test_string,test_leg_set = process_img("images/" + iname)
+        t0 = time()
+        test_string,test_leg_set = process_img("images/" + iname, use_text_not_color=txtcolres)
+        ttime = time()-t0
+        ttimes.append(ttime)
+        print("time: ", ttime)
         print(display_string)
         print(leg_set)
         print(test_string)
@@ -88,6 +97,13 @@ def writeOutput(numGraphs):
             print('series fail --------------------------------')
         if not bool(test_leg_set):
             print('empty set for legend')
+        print("axis score: " + str(axis_hits/ctr))
+        print("series score: " + str(series_hits/ctr))
+        print("total score: " + str(((axis_hits + series_hits)/2/ctr)*100) + "%")
+
+    # time info
+    print("Median time: ", median(ttimes))
+    print("Mean time: ", mean(ttimes))
 
     hits = (axis_hits + series_hits)/2
     print("axis score: " + str(axis_hits/numGraphs))
@@ -170,7 +186,7 @@ def test_outside_data():
         e = imagePath.find('.', s)
         name = imagePath[s:e]
         gtCorr = set(M[name].keys())
-        testAxis,testCorr = process_img(imagePath)
+        testAxis,testCorr = process_img(imagePath, use_text_not_color=False)
         print(gtCorr)
         print(testCorr)
         if gtCorr == testCorr:
@@ -194,7 +210,7 @@ def test_outside_data():
         e = imagePath.find('.', s)
         name = imagePath[s:e]
         gtCorr = set(R[name].keys())
-        testAxis,testCorr = process_img(imagePath)
+        testAxis,testCorr = process_img(imagePath, use_text_not_color=False)
         print(gtCorr)
         print(testCorr)
         if gtCorr == testCorr:
@@ -217,4 +233,5 @@ def test_outside_data():
     print('Total Score: ' + str((mScore+rScore)/2))
     print('Total Adjusted: ' + str((mAScore+rAScore)/2))
 
-#test_outside_data()
+test_outside_data()
+#writeOutput(10, txtcolres=False)

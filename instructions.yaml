@@ -1,4 +1,4 @@
-size: 100 #160
+size: 100
 graphType: 'random,random' # if you want a specific graph type such as line or scatter or if you just want random types
 color: 'multi,multi'  # multi for multi-colored, anything else for single color
 dataStyle: 'multi,multi'  # same issue here that multi had, fix later
