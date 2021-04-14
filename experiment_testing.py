@@ -382,7 +382,7 @@ def exp8(numGraphs):
     # Control
     # create necessary dirs
     #clean(os.getcwd())
-    outputDir = "exp8_filtered_ctrl_v3"
+    outputDir = "exp8_filtered_ctrl_v4"
     create_filtered_dirs(outputDir)
     poss_sNs = [1,2,3]
     for i in range(numGraphs):
@@ -399,7 +399,7 @@ def exp8(numGraphs):
     # intervention
     # create necessary dirs
     #clean(os.getcwd())
-    outputDir = "exp8_filtered_test_v3"
+    outputDir = "exp8_filtered_test_v4"
     create_filtered_dirs(outputDir)
     for i in range(numGraphs):
         sN = choice(poss_sNs)
@@ -415,7 +415,7 @@ def exp8(numGraphs):
 
 #exp8(100)
 #cwd = os.getcwd()
-#graph_classification(cwd, 0, "exp8_filtered_test_copy")
+#graph_classification(cwd, 0, "exp8_filtered_test_v2")
 
 
 # Experiment 9)

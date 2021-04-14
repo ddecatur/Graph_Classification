@@ -86,8 +86,8 @@ def get_random_string(length):
     return res
 
 # create multi data graph
-def create_multiData(n, sN, train_val, seriesType, dcolor, dataStyle, model, pstyle='default', outputDir='graphs_filtered', outputDir2='images', verbose=0):
-    
+def create_multiData(n, sN, train_val, seriesType, dcolor, dataStyle, model, pstyle='default', outputDir='graphs_filtered', outputDir2='images', noHard=False, verbose=0):
+    print("noHard: ", noHard)
     #determine variables
     STcopy = seriesType
     possSeries = ['line', 'scatter', 'bar']
@@ -97,11 +97,25 @@ def create_multiData(n, sN, train_val, seriesType, dcolor, dataStyle, model, pst
             STcopy = choice(possSeries)
         if STcopy == 'line':
             varArr[i] = (genData('line'),'line')
+            # if noHard, ensure that all graphs are sufficently far away from the classification boundaries
+            if noHard:
+                while (abs(varArr[i][0][2]-0.4) < 0.15) or (abs(varArr[i][0][2]+0.4) < 0.15):
+                    varArr[i] = (genData('line'),'line')
         elif STcopy == 'bar':
             varArr[i] = (genData('bar'),'bar')
+            # if noHard, ensure that all graphs are sufficently far away from the classification boundaries
+            if noHard:
+                while (abs(varArr[i][0][2]-0.4) < 0.15) or (abs(varArr[i][0][2]+0.4) < 0.15):
+                    varArr[i] = (genData('bar'),'bar')
         elif STcopy == 'scatter':
             varArr[i] = (genData('scatter'),'scatter')
+            # if noHard, ensure that all graphs are sufficently far away from the classification boundaries
+            if noHard:
+                while (abs(varArr[i][0][2]-0.4) < 0.15) or (abs(varArr[i][0][2]+0.4) < 0.15):
+                    varArr[i] = (genData('scatter'),'scatter')
 
+        #print(varArr[i][0][2], "--------------------------------------------------")
+        #print(abs(varArr[i][0][2]-0.4), abs(varArr[i][0][2]+0.4))
     # colors
     colors = ['r', 'g', 'b'] # add other colors to see if it affects learning
     posRGB = {(255,0,0):'r', (0,128,0):'g', (0,0,255):'b'}
@@ -114,9 +128,11 @@ def create_multiData(n, sN, train_val, seriesType, dcolor, dataStyle, model, pst
 
     copyC = colors
     colArr = np.empty(sN, str)
+    #colordermap = ['b','r','g'] 
     for i in range (0, sN):
         elem = choice(copyC)
         colArr[i] = elem
+        #colArr[i] = colordermap[i] # THIS LINE IS ONLY FOR TRAINING MULTI PSTYLE STUFF REMOVE LATER
         copyC.remove(elem)
 
 
@@ -142,11 +158,14 @@ def create_multiData(n, sN, train_val, seriesType, dcolor, dataStyle, model, pst
     if 'dark_background' in plot_options:
         plot_options.remove('dark_background')
     plt.style.use('default')
+    #pstyle = 'multi' # remove this later!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     if pstyle == 'multi':
         style = choice(plot_options)
         plt.style.use(style)
+    longcol = {'r':'red', 'b':'blue', 'g':'green'}
     for i,var in enumerate(varArr):
         ((X1,X2,corrph),GT) = var
+        #print(colArr[i], corrph)
         if corrph >= 0.4:
             correlation[colArr[i]] = 'positive'
         elif corrph <= -0.4:
@@ -154,25 +173,27 @@ def create_multiData(n, sN, train_val, seriesType, dcolor, dataStyle, model, pst
         else:
             correlation[colArr[i]] = 'neutral'
         lbl = get_random_string(randint(3,12))
+        #print(correlation)
         label_to_corr_map[lbl] = correlation[colArr[i]]
-        #col_to_corr_map["colArr[i]"] = correlation[colArr[i]]
+        col_to_corr_map[longcol[colArr[i]]] = correlation[colArr[i]]
+        #print(col_to_corr_map)
         if GT == 'line':
             if model == 'g':
                 plt.plot(X1, X2, linestyle=LSarr[i], label=lbl, color=colArr[i])     
             else:
-                plt.plot(X1, X2, linestyle=LSarr[i], label=lbl) # color=colArr[i], 
+                plt.plot(X1, X2, linestyle=LSarr[i], label=lbl, color=colArr[i]) # color=colArr[i], 
         elif GT == 'scatter':
             if model == 'g':
                 ax.scatter(X1, X2, label=lbl, color=colArr[i])     
             else:
-                ax.scatter(X1, X2, label=lbl) # color=colArr[i], 
+                ax.scatter(X1, X2, label=lbl, color=colArr[i]) # color=colArr[i], 
         elif GT == 'bar':
             if model == 'g':
                 w = 0.8
                 ax.bar((len(varArr)*X1)+(w*i), X2, width=w, align='center', label=lbl, color=colArr[i])
             else:
                 w = 0.8
-                ax.bar((len(varArr)*X1)+(w*i), X2, width=w, align='center', label=lbl) # color=colArr[i], 
+                ax.bar((len(varArr)*X1)+(w*i), X2, width=w, align='center', label=lbl, color=colArr[i]) # color=colArr[i], 
         else:
             raise ValueError('graph type not recognized')
         
@@ -235,7 +256,7 @@ def create_multiData(n, sN, train_val, seriesType, dcolor, dataStyle, model, pst
         fig.savefig(fname)
         plt.close()
         if model == "pt":
-            return ("graph_" + str(n), X1s, X2s, titlestr, label_to_corr_map)
+            return ("graph_" + str(n), X1s, X2s, titlestr, label_to_corr_map, col_to_corr_map)
         else:
             return fname
     

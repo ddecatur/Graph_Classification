@@ -243,7 +243,7 @@ def run(img, algo='current', use_text_not_color=True):
     for i,(res,col) in enumerate(segImg):
         fname = "pipeline_batch/" + str(i) + ".png"
         plt.imsave(fname, res)
-        cat = predictCategory(fname, "models/correlation/graph_class_model_v3.h5", ['negative', 'neutral', 'positive']) #"models/correlation/graph_class_model_v3.h5" #"models/correlation/graph_class_model_87_default_pstyle.h5"
+        cat = predictCategory(fname, "models/correlation/graph_class_model_85_multi_pstyle.h5", ['negative', 'neutral', 'positive']) #"models/correlation/graph_class_model_v3.h5" #"models/correlation/graph_class_model_87_default_pstyle.h5"
         # variable = pytesseract.image_to_string(Image.open(fname))
         colstr = "["
         for chanel in col:

@@ -36,7 +36,7 @@ def graph_classification (path_to_data, n, dataDir="graphs_filtered"):
         total_val = num_pos_val + num_neg_val + num_ntr_val
 
         # set constants
-        batch_size = 128 #64
+        batch_size = 64 #128 #64
         val_batch_size = batch_size//4
         epochs = 15
         IMG_HEIGHT = 150

@@ -60,10 +60,12 @@ def writeOutput(numGraphs, pstyle="default", txtcolres=True):
     for i in range(0,numGraphs):
         ctr+=1
         leg_display_str = ""
-        name,x1s,x2s,tstr,label_to_corr_map = create_multiData(i, choice(posSNs), "train", "random", "multi", "solid", 'pt', pstyle=pstyle)
+        name,x1s,x2s,tstr,label_to_corr_map,col_to_corr_map = create_multiData(i, choice(posSNs), "train", "random", "multi", "solid", 'pt', pstyle=pstyle, noHard=True)
         iname = name + ".png"
         display_string = "images/" + iname + ", x axis: " + x1s + ", y axis: " + x2s + ", title: " + tstr
         leg_set = set()
+        if not txtcolres:
+            label_to_corr_map = col_to_corr_map
         for key in label_to_corr_map:
             leg_set.add(key + ": " + label_to_corr_map[key])
             leg_display_str = leg_display_str + ", " + key + ": " + label_to_corr_map[key]
@@ -178,10 +180,13 @@ def test_outside_data():
         gtLabels = yaml.load(f, Loader=yaml.FullLoader)
     M = gtLabels.get('M')
     R = gtLabels.get('R')
-    fileList = glob.glob("exp_testing/M/M*")
+    fileList = glob.glob("exp_testing/M/M*.jpg")
+    fileList.sort()
     ctr = 0
     for imagePath in fileList:
+        print(imagePath)
         ctr += 1
+        print(ctr)
         s = imagePath.find('/M/M') + 3
         e = imagePath.find('.', s)
         name = imagePath[s:e]
@@ -200,12 +205,17 @@ def test_outside_data():
             for elem2 in testCorr:
                 if elem1 == elem2:
                     mAScore += (1/max(len(gtCorr),len(testCorr)))
+        print('M Score: ' + str(mScore/ctr))
+        print('M Score Adjusted: ' + str(mAScore/ctr))
     mScore = mScore/ctr
     mAScore = mAScore/ctr
-    fileList = glob.glob("exp_testing/R/R*")
+    fileList = glob.glob("exp_testing/R/R*.jpg")
+    fileList.sort()
     ctr = 0
     for imagePath in fileList:
+        print(imagePath)
         ctr += 1
+        print(ctr)
         s = imagePath.find('/R/R') + 3
         e = imagePath.find('.', s)
         name = imagePath[s:e]
@@ -224,6 +234,8 @@ def test_outside_data():
             for elem2 in testCorr:
                 if elem1 == elem2:
                     rAScore += (1/max(len(gtCorr),len(testCorr))) # this way it punishes extra info
+        print('R Score: ' + str(rScore/ctr))
+        print('R Score Adjusted: ' + str(rAScore/ctr))
     rScore = rScore/ctr
     rAScore = rAScore/ctr
     print('M Score: ' + str(mScore))
@@ -232,6 +244,83 @@ def test_outside_data():
     print('R Score Adjusted: ' + str(rAScore))
     print('Total Score: ' + str((mScore+rScore)/2))
     print('Total Adjusted: ' + str((mAScore+rAScore)/2))
+    print('Real total score adjusted: ' + str(((mAScore*50)+(rAScore*33)) / 83))
 
-test_outside_data()
-#writeOutput(10, txtcolres=False)
+
+def test_google_img_data():
+    eScore = 0
+    hScore = 0
+    eAScore = 0
+    hAScore = 0
+    with open('google_img_labels.yaml') as f:
+        gtLabels = yaml.load(f, Loader=yaml.FullLoader)
+    E = gtLabels.get('easy')
+    H = gtLabels.get('hard')
+    fileList = glob.glob("google_imgs/easy/*.jpg")
+    fileList.sort()
+    ctr = 0
+    for imagePath in fileList:
+        print(imagePath)
+        ctr += 1
+        print(ctr)
+        s = imagePath.find('/easy/') + 6
+        e = imagePath.find('.', s)
+        name = 'E' + imagePath[s:e]
+        gtCorr = set(E[name].keys())
+        testAxis,testCorr = process_img(imagePath, use_text_not_color=False)
+        print(gtCorr)
+        print(testCorr)
+        if gtCorr == testCorr:
+            eScore += 1
+        else:
+            with open('easyMissed.csv', 'a') as f:
+                writer = csv.writer(f, delimiter=',')
+                writer.writerow((imagePath, gtCorr, testCorr))
+            f.close()
+        for elem1 in gtCorr:
+            for elem2 in testCorr:
+                if elem1 == elem2:
+                    eAScore += (1/max(len(gtCorr),len(testCorr)))
+        print('E Score: ' + str(eScore/ctr))
+        print('E Score Adjusted: ' + str(eAScore/ctr))
+    #eScore = eScore/ctr
+    #eAScore = eAScore/ctr
+    fileList = glob.glob("google_imgs/hard/*.jpg")
+    fileList.sort()
+    ctrH = 0
+    for imagePath in fileList:
+        print(imagePath)
+        ctrH += 1
+        print(ctrH)
+        s = imagePath.find('/hard/') + 6
+        e = imagePath.find('.', s)
+        name = 'H' + imagePath[s:e]
+        gtCorr = set(H[name].keys())
+        testAxis,testCorr = process_img(imagePath, use_text_not_color=False)
+        print(gtCorr)
+        print(testCorr)
+        if gtCorr == testCorr:
+            hScore += 1
+        else:
+            with open('hardMissed.csv', 'a') as f:
+                writer = csv.writer(f, delimiter=',')
+                writer.writerow((imagePath, gtCorr, testCorr))
+            f.close()
+        for elem1 in gtCorr:
+            for elem2 in testCorr:
+                if elem1 == elem2:
+                    hAScore += (1/max(len(gtCorr),len(testCorr))) # this way it punishes extra info
+        print('H Score: ' + str(hScore/ctrH))
+        print('H Score Adjusted: ' + str(hAScore/ctrH))
+    #hScore = hScore/ctrH
+    #hAScore = hAScore/ctrH
+    print('E Score: ' + str(eScore/ctr))
+    print('E Score Adjusted: ' + str(eAScore/ctr))
+    print('H Score: ' + str(hScore/ctrH))
+    print('H Score Adjusted: ' + str(hAScore/ctrH))
+    print('Total Score: ' + str((eScore+hScore)/2))
+    print('Total Adjusted: ' + str((eAScore+hAScore)/2))
+    print('Real total score adjusted: ' + str((eAScore+hAScore) / (ctr+ctrH)))
+
+#test_google_img_data()
+writeOutput(100, txtcolres=False)
